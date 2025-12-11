@@ -1,0 +1,1 @@
+# Реалізація Depends(JWTBearer)

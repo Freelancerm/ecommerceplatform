@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: jwt_core_lib
+Version: 0.1.0
+Requires-Dist: python-jose[cryptography]
+Requires-Dist: pydantic
+Dynamic: requires-dist

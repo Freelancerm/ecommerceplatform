@@ -1,0 +1,9 @@
+setup.py
+jwt_core_lib/__init__.py
+jwt_core_lib/dependencies.py
+jwt_core_lib/utils.py
+jwt_core_lib.egg-info/PKG-INFO
+jwt_core_lib.egg-info/SOURCES.txt
+jwt_core_lib.egg-info/dependency_links.txt
+jwt_core_lib.egg-info/requires.txt
+jwt_core_lib.egg-info/top_level.txt

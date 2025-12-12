@@ -16,7 +16,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         payload = verify_token(token)
         phone: str = payload.get("phone")
         role: str = payload.get("role", "user")
-        if not phone:
+        if phone is None:
             raise credentials_exception
 
         token_data = TokenData(phone=phone, role=role)

@@ -2,15 +2,15 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Ecommerce Auth Service"
+    PROJECT_NAME: str = "Ecommerce Order service"
     DATABASE_URL: str
     REDIS_URL: str
     ELASTICSEARCH_URL: str
-    SECRET_KEY: str
-    ALGORITHM: str = "HS256"
+    INVENTORY_SERVICE_URL: str
+    PAYMENT_SERVICE_URL: str
     JWT_SECRET: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
+    SECRET_KEY: str
+
 
     class Config:
         env_file = ".env"

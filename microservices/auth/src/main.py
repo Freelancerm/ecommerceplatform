@@ -3,6 +3,7 @@ from .core.config import settings
 from contextlib import asynccontextmanager
 from .api import auth_routes, internal_routes
 from .core.redis_client import redis_client
+from fastapi.middleware.cors import CORSMiddleware
 
 
 @asynccontextmanager
@@ -40,3 +41,17 @@ async def health_check():
     return {"status": "ok",
             "service": "auth"
             }
+
+
+# === CORS middleware ===
+origins = [
+    "*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)

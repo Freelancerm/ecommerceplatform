@@ -21,6 +21,71 @@ services:
     networks:
       - app_network
 
+  service_a: # Catalog
+    build:
+      context: .
+      dockerfile: microservices/catalog/Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "81:8000"
+    volumes:
+      - ./services/catalog:/app
+      - ./shared:/app/shared
+    env_file:
+      - microservices/catalog/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres/ecommerce
+      - REDIS_URL=redis://redis:6379/0
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    depends_on:
+      - postgres
+      - redis
+      - elasticsearch
+    networks:
+      - app_network
+
+  service_b: # Inventory
+    build:
+      context: .
+      dockerfile: microservices/inventory/Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "82:8000"
+    volumes:
+      - ./services/inventory:/app
+      - ./shared:/app/shared
+    env_file:
+      - microservices/inventory/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres/ecommerce
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - app_network
+
+  service_c: # Orders
+    build:
+      context: .
+      dockerfile: microservices/order/Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "83:8000"
+    volumes:
+      - ./services/order:/app
+      - ./shared:/app/shared
+    env_file:
+      - microservices/order/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres/ecommerce
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - app_network
+
   service_d: # Auth
     build:
       context: .
@@ -47,6 +112,8 @@ services:
       context: .
       dockerfile: microservices/notification/Dockerfile
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "84:8000"
     volumes:
       - ./services/notification:/app
       - ./shared:/app/shared

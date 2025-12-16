@@ -1,12 +1,13 @@
 import secrets
 import json
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import timedelta
 from ..core.config import settings
 from ..schemas.auth import OtpRequest, OtpResponse, TokePair
 from ..core.redis_client import redis_client
 from jwt_core_lib.utils import create_access_token, create_refresh_token, TokenPair
+from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter()
 
@@ -86,3 +87,42 @@ async def verify_otp(request: OtpVerifyRequest):
     )
 
     return TokenPair(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
+
+
+@router.post("/token", response_model=TokePair)
+async def get_token_for_swagger(
+    form_data: OAuth2PasswordRequestForm = Depends() # Очікує дані форми: username, password
+):
+    """
+    Standard OAuth2 token endpoint for Swagger UI (Accepts form data).
+    Maps username/password to phone_number/code.
+    """
+    phone = form_data.username # Swagger передає телефон як username
+    otp_code = form_data.password # Swagger передає OTP як password
+    otp_key = f"otp:{phone}"
+
+    stored_code = await redis_client.get_value(otp_key)
+
+    if not stored_code:
+        raise HTTPException(status_code=400, detail="OTP expired or not found")
+
+    if stored_code != otp_code: # Порівнюємо переданий OTP з формою
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    # Успішна верифікація, генеруємо токени (логіка з verify_otp)
+    await redis_client.set_value(otp_key, "", ttl=1)
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+
+    access_token = create_access_token(
+        data={"sub": phone, "type": "access"},
+        expires_delta=access_token_expires
+    )
+
+    refresh_token = create_refresh_token(
+        data={"sub": phone, "type": "refresh"},
+        expires_delta=refresh_token_expires
+    )
+
+    return TokePair(access_token=access_token, refresh_token=refresh_token, token_type="bearer")

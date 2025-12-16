@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from .utils import verify_token, TokenData
 from jose import JWTError
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")  # URL generic here
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost/auth/token")  # URL generic here
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):

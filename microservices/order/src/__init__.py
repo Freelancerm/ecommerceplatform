@@ -1,0 +1,3 @@
+"""
+Order service package initialization.
+"""

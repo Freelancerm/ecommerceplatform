@@ -11,7 +11,7 @@ import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
-    es_client.connect()
+    await es_client.connect()
     await es_client.create_index()
     await cache_service.connect()
 

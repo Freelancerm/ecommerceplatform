@@ -20,7 +20,29 @@ async def create_order(
         user: TokenData = Depends(get_current_user),
 ):
     """
-    Creates an order and starts the Saga
+    Creates an initial order record in the database and initiates the execution of a Saga.
+
+    The function follows these critical steps:
+    1. Local Transaction: A new Order record is created in the local database with a PENDING status.
+    2. Saga Execution: The SagaOrchestrator takes over, coordinating distributed transactions
+       (e.g., reserving inventory, processing payment).
+    3. Failure Handling: The Saga handles its own rollback. If the Saga fails, the Order
+       status is updated (e.g., to FAILED) before being returned.
+    4. Notification: Upon successful completion of the Saga, an event is published to Redis
+       to notify admins and confirm the order with the user.
+
+    Arguments:
+     order_in (OrderCreate): The desired items and simulation flags for the new order.
+     db (AsyncSession): The asynchronous database session for local transaction management.
+     user (TokenData): Injected dependency containing the authenticated user's details (phone).
+
+    Returns:
+     OrderResponse: The final order object, which will have a status of FAILED or COMPLETED
+      after the Saga execution.
+
+    Side Effects:
+     Starts a distributed transaction via SagaOrchestrator.
+     Publishes a 'new_order' event to the Redis 'notifications' channel upon success.
     """
     # Create Local Order (Pending)
     # Convert Pydantic items to dict list for JSON storage

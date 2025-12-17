@@ -11,6 +11,28 @@ async def websocket_endpoint(
         websocket: WebSocket,
         token: str = Query(..., description="JWT Access Token")
 ):
+    """
+    Establishes a dedicated WebSocket connection for an authenticated user.
+
+    The endpoint performs authentication by validating the provided JWT access token.
+    Upon successful validation, the user_id (extracted from the 'phone' claim) is
+    registered with the connection manager. This connection remains open until
+    explicitly closed by the client or interrupted by an error.
+
+    Arguments:
+     websocket (WebSocket): The active connection object managed by FastAPI.
+     token (str): The JWT access token provided as a query parameter for authentication.
+
+    Authentication Flow:
+    1. Verify JWT validity and expiration.
+    2. Extract 'phone' claim as user_id.
+    3. Register connection with manager.
+
+    Raises:
+     WebSocketDisconnect: Triggered when the client gracefully closes the connection.
+     Exception: If JWT verification fails (e.g., token invalid/expired), the
+      connection is closed with status WS_1008_POLICY_VIOLATION.
+    """
     try:
         payload = verify_token(token)
         user_id = payload.get("phone")
@@ -39,17 +61,32 @@ async def websocket_endpoint(
 
 @router.get("/health")
 async def health_check():
+    """
+    Simple health check endpoint to confirm the service is operational.
+
+    Returns:
+     dict: Status confirmation {"status": "ok", "service": "notification"}.
+    """
     return {"status": "ok", "service": "notification"}
 
 
 @router.websocket("/ws/admin/feed")
 async def websocket_admin_endpoint(websocket: WebSocket):
     """
-    WebSocket endpoint for Admins to receive global updates (e.g. New Orders)
-    """
+    Establishes an unauthenticated, persistent WebSocket connection for the Admin Feed.
+
+    This connection is intended for broadcasting global, read-only administrative
+    updates (e.g., "New Order Received"). It registers the connection with the
+    manager's administrative group.
+
+    Arguments:
+     websocket (WebSocket): The active connection object.
+
+    Raises:
+     WebSocketDisconnect: Triggered when the admin client closes the connection.    """
     await manager.connect_admin(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        await manager.disconnect_admin(websocket)

@@ -15,8 +15,21 @@ router = APIRouter()
 @router.post("/otp/send/", response_model=OtpResponse)
 async def send_otp(request: OtpRequest):
     """
-    Generates OTP and requests Service E to send it via Telegram.
-    Fails if user hasn't started the bot (no chat_id mapping).
+    Initiates the OTP delivery process via Telegram.
+
+    This function checks if the user's phone number is mapped to a Telegram chat ID in Redis.
+    If found, it generates a cryptographically secure 6-digit code, saves it to Redis
+    with a 5-minute TTL, and publishes an event to a notification worker.
+
+    Arguments:
+     `request` (OtpRequest): A Pydantic model containing the user's `phone_number`.
+
+    Returns:
+     `OtpResponse`: A success message indicating the OTP was dispatched.
+
+    Raises:
+     `HTTPException (400)`: Raised with detail "TELEGRAM BOT NOT STARTED" if no `chat_id`
+        is found for the provided phone number.
     """
     phone = request.phone_number
     chat_id_key = f"user:{phone}:chat_id"
@@ -56,7 +69,21 @@ class OtpVerifyRequest(BaseModel):
 @router.post("/otp/verify/", response_model=TokePair)
 async def verify_otp(request: OtpVerifyRequest):
     """
-    Verifies OTP and issues JWT tokens.
+    Validates the provided OTP and issues a JWT token pair.
+
+    This function retrieves the stored OTP from Redis using the phone number as a key.
+    If the code matches, it immediately deletes or invalidates the OTP to prevent
+    reuse and generates both Access and Refresh tokens.
+
+    Arguments:
+     request (OtpVerifyRequest): Contains phone_number and the 6-digit code submitted by the user.
+
+    Returns:
+     TokenPair: An object containing the access_token, refresh_token, and token_type ("bearer").
+
+    Raises:
+     HTTPException (400): If the OTP is expired, not found, or if the submitted code
+        does not match the stored code ("Invalid OTP").
     """
     phone = request.phone_number
     otp_key = f"otp:{phone}"
@@ -94,8 +121,24 @@ async def get_token_for_swagger(
     form_data: OAuth2PasswordRequestForm = Depends() # Очікує дані форми: username, password
 ):
     """
-    Standard OAuth2 token endpoint for Swagger UI (Accepts form data).
-    Maps username/password to phone_number/code.
+    Standard OAuth2 compatible token endpoint used primarily for Swagger UI.
+
+    This endpoint mimics the token generation logic of verify_otp but accepts standard
+    OAuth2 form data (username and password) instead of a JSON body.
+    It maps the fields as follows:
+    - username is treated as the phone_number.
+    - password is treated as the OTP code.
+
+    Arguments:
+     form_data (OAuth2PasswordRequestForm): Standard dependency that extracts
+        username and password from the request body, typically used by interactive
+        documentation systems like Swagger.
+
+    Returns:
+     TokenPair: JWT tokens for the authenticated session.
+
+    Raises:
+     HTTPException (400): If the credentials (Phone/OTP) are invalid or expired.
     """
     phone = form_data.username # Swagger передає телефон як username
     otp_code = form_data.password # Swagger передає OTP як password
@@ -125,4 +168,4 @@ async def get_token_for_swagger(
         expires_delta=refresh_token_expires
     )
 
-    return TokePair(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
+    return TokenPair(access_token=access_token, refresh_token=refresh_token, token_type="bearer")

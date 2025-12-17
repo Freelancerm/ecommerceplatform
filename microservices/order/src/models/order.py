@@ -6,6 +6,7 @@ from ..core.database import Base
 
 
 class OrderStatus(str, enum.Enum):
+    """Possible lifecycle states for an order."""
     PENDING = "PENDING"
     PAID = "PAID"
     SHIPPED = "SHIPPED"
@@ -14,6 +15,8 @@ class OrderStatus(str, enum.Enum):
 
 
 class Order(Base):
+    """SQLAlchemy model for customer orders."""
+
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

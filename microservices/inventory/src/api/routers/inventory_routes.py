@@ -14,6 +14,16 @@ router = APIRouter()
 
 # Redis client for publishing updates
 async def get_redis():
+    """
+    Initializes an asynchronous Redis connection for event broadcasting.
+
+    This helper provides a transient Redis client used to publish stock updates
+    to other microservices (like the search or catalog service).
+
+    Returns:
+     redis.Redis | None: An active Redis client if REDIS_URL is configured,
+      otherwise None.
+    """
     if not settings.REDIS_URL:
         return None
     return redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
@@ -22,7 +32,21 @@ async def get_redis():
 @router.post("/", response_model=InventoryResponse)
 async def create_inventory_item(item: InventoryCreate, db: AsyncSession = Depends(get_db)):
     """
-    Create initial stock for a product
+    Initializes a new stock record for a product.
+
+    Attempts to insert a new InventoryItem into the database. If a record for the
+    specified product_id already exists, the database triggers a unique constraint
+    violation handled by an IntegrityError.
+
+    Arguments:
+     item (InventoryCreate): Schema containing product_id and initial stock count.
+     db (AsyncSession): Asynchronous SQLAlchemy database session.
+
+    Returns:
+     InventoryResponse: The created inventory object.
+
+    Raises:
+     HTTPException (409): If an inventory record for the product already exists.
     """
     db_item = InventoryItem(product_id=item.product_id, stock=item.stock)
     db.add(db_item)
@@ -43,8 +67,26 @@ async def create_inventory_item(item: InventoryCreate, db: AsyncSession = Depend
 @router.post("/reserve")
 async def reserve_stock(request: InventoryReserve, db: AsyncSession = Depends(get_db)):
     """
-    Reserve stock (ACID + Optimistic Locking).
-    Decrements stock only if stock >= qty and version matches
+    Safely decrements stock for an order using Optimistic Locking.
+
+    This method ensures data integrity under high concurrency:
+    1. It fetches the current stock and version of the item.
+    2. It executes an update only if the 'version' in the database matches
+       the version retrieved in step 1.
+    3. If rowcount is 0, it means another process updated the item in the
+       interim, triggering a retry requirement.
+    4. Upon success, it publishes an 'inventory_updates' event to Redis.
+
+    Arguments:
+     request (InventoryReserve): Schema containing product_id and quantity to reserve.
+     db (AsyncSession): Asynchronous database session.
+
+    Returns:
+     dict: Status message confirming the reservation.
+
+    Raises:
+     HTTPException (404): If product is missing or stock is insufficient.
+     HTTPException (409): If a concurrent update (race condition) is detected.
     """
     # Fetch current state
     stmt = select(InventoryItem).where(InventoryItem.product_id == request.product_id)
@@ -83,9 +125,11 @@ async def reserve_stock(request: InventoryReserve, db: AsyncSession = Depends(ge
     # Publish event
     redis_client = await get_redis()
     if redis_client:
+        remaining_stock = item.stock - request.quantity
         event = {
             "product_id": request.product_id,
-            "stock": (item.stock - request.quantity) > 0
+            "available": remaining_stock > 0,
+            "stock": remaining_stock
         }
         await redis_client.publish("inventory_updates", json.dumps(event))
         await redis_client.close()
@@ -96,8 +140,21 @@ async def reserve_stock(request: InventoryReserve, db: AsyncSession = Depends(ge
 @router.post("/release")
 async def release_stock(request: InventoryRelease, db: AsyncSession = Depends(get_db)):
     """
-    Release Stock(Compensating Transaction)
-    Adds stock back.
+    Increments stock back to the inventory (Compensating Transaction).
+
+    Typically called by a Saga orchestrator when a subsequent order step
+    (like payment) fails. It adds the quantity back to the stock and
+    broadcasts the updated availability to the system.
+
+    Arguments:
+     request (InventoryRelease): Schema containing product_id and quantity to return.
+     db (AsyncSession): Asynchronous database session.
+
+    Returns:
+     dict: Status message confirming the release.
+
+    Raises:
+     HTTPException (404): If the product record does not exist in inventory.
     """
     stmt = select(InventoryItem).where(InventoryItem.product_id == request.product_id)
     result = await db.execute(stmt)

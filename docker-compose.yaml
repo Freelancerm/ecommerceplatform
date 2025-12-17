@@ -29,7 +29,7 @@ services:
     ports:
       - "81:8000"
     volumes:
-      - ./services/catalog:/app
+      - ./microservices/catalog:/app
       - ./shared:/app/shared
     env_file:
       - microservices/catalog/.env
@@ -52,7 +52,7 @@ services:
     ports:
       - "82:8000"
     volumes:
-      - ./services/inventory:/app
+      - ./microservices/inventory:/app
       - ./shared:/app/shared
     env_file:
       - microservices/inventory/.env
@@ -73,7 +73,7 @@ services:
     ports:
       - "83:8000"
     volumes:
-      - ./services/order:/app
+      - ./microservices/order:/app
       - ./shared:/app/shared
     env_file:
       - microservices/order/.env
@@ -94,7 +94,7 @@ services:
     ports:
       - "80:8000"
     volumes:
-      - ./services/auth:/app
+      - ./microservices/auth:/app
       - ./shared:/app/shared
     env_file:
       - microservices/auth/.env
@@ -115,7 +115,7 @@ services:
     ports:
       - "84:8000"
     volumes:
-      - ./services/notification:/app
+      - ./microservices/notification:/app
       - ./shared:/app/shared
     env_file:
       - microservices/notification/.env

@@ -8,8 +8,19 @@ from ..core.es_client import es_client
 
 async def inventory_update_consumer():
     """
-    Connects to Redis Pub/Sub and listens for inventory updates.
-    Updates Elasticsearch index accordingly.
+    Listens for real-time inventory updates via Redis and synchronizes them with Elasticsearch.
+
+    This consumer acts as an event listener on the 'inventory_updates' Redis channel.
+    When a message is received, it extracts the availability status and performs
+    a partial document update in the Elasticsearch 'products' index. This ensures
+    that search results remain consistent with the actual warehouse stock.
+
+    Expected Message Format:
+    {
+        "product_id": "string",
+        "available": boolean,
+        "stock": integer (optional)
+    }
     """
     if not settings.REDIS_URL:
         logging.warning("Redis URL not configured, skipping consumer start")

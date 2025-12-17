@@ -19,7 +19,20 @@ async def list_orders(
         admin: TokenData = Depends(get_current_admin)
 ):
     """
-    Admin: List all orders.
+    Retrieves a paginated list of all orders, optionally filtered by status.
+
+    This endpoint is secured and accessible only by administrative users. It constructs
+    an asynchronous SQLAlchemy query, allowing filtering based on the OrderStatus enum.
+
+    Arguments:
+     skip (int): The number of orders to skip (pagination offset). Defaults to 0.
+     limit (int): The maximum number of orders to return. Defaults to 100.
+     status (OrderStatus | None): Optional filter to only return orders matching a specific status (e.g., 'SHIPPED').
+     db (AsyncSession): The asynchronous database session dependency.
+     admin (TokenData): Dependency ensuring the requester has valid administrator credentials.
+
+    Returns:
+     List[OrderResponse]: A list of order objects.
     """
     query = select(Order).offset(skip).limit(limit)
     if status:
@@ -37,7 +50,22 @@ async def update_order_status(
         admin: TokenData = Depends(get_current_admin),
 ):
     """
-    Admin: Force update order status (e.g. SHIPPED).
+    Manually updates the status of a specific order.
+
+    This is typically used for administrative overrides or external system synchronization
+    (e.g., marking an order as 'SHIPPED' after receiving confirmation from a carrier).
+
+    Arguments:
+     order_id (int): The unique identifier of the order to be updated.
+     new_status (OrderStatus): The new status to be assigned to the order (must be a valid enum value).
+     db (AsyncSession): The asynchronous database session.
+     admin (TokenData): Dependency ensuring administrative access.
+
+    Returns:
+     OrderResponse: The order object with the newly updated status.
+
+    Raises:
+     HTTPException (404): If no order with the given order_id is found in the database.
     """
     order = await db.get(Order, order_id)
     if not order:

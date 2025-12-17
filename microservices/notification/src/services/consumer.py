@@ -10,7 +10,24 @@ from ..core.redis_client import redis_client
 
 async def notification_consumer():
     """
-    Connects to Redis Pub/Sub and listens for notifications.
+    Connects to the 'notifications' Redis Pub/Sub channel and handles various
+    system events, routing them to the appropriate communication channel.
+
+    This function acts as the central dispatch for all outbound notifications,
+    including one-time passwords (OTP), real-time order status updates (WebSocket),
+    and transaction receipts (Telegram).
+
+    The consumer runs indefinitely, only stopping upon a cancellation or critical error.
+
+    Handled Message Types:
+    1. 'otp_send': Dispatches the login code via the Telegram Bot service.
+    2. 'new_order': Broadcasts to administrators via WebSocket and sends a confirmation
+       receipt to the user via Telegram.
+    3. 'order_update': Sends a personal order status notification to the user
+       via WebSocket.
+
+    Returns:
+     None: This is a long-running asynchronous task.
     """
     red = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
     pubsub = red.pubsub()
@@ -59,13 +76,13 @@ async def notification_consumer():
                             receipt_text = f"✅ Order #{order_id} Confirmed!\nAmount: {data.get('amount')}"
                             await send_telegram_message(int(chat_id), receipt_text)
 
-                    # Order Update (User Notification)
-                    elif msg_type == "order_update":
-                        user_id = data.get("user_id")
-                        status = data.get("status")
-                        text = f"Your order is now {status}"
-                        logging.info(f"Notifying user {user_id}: {status}")
-                        await manager.send_personal_message(text, user_id)
+                # Order Update (User Notification)
+                elif msg_type == "order_update":
+                    user_id = data.get("user_id")
+                    status = data.get("status")
+                    text = f"Your order is now {status}"
+                    logging.info(f"Notifying user {user_id}: {status}")
+                    await manager.send_personal_message(text, user_id)
 
     except asyncio.CancelledError:
         logging.info("Redis consumer cancelled")

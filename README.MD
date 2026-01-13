@@ -1,6 +1,6 @@
 # 📦 Microservices Architecture Project
 
-This project showcases a microservices architecture with a focus on authentication and inventory management. It includes a basic FastAPI application, JWT-based authentication, and a separate inventory microservice. The architecture is designed to be scalable and maintainable, with each microservice handling a specific domain of responsibility.
+The Ecommerce Microservices Project is a comprehensive, scalable, and highly available ecommerce platform built using a microservices architecture. It consists of multiple independent services, each responsible for a specific domain, such as authentication, inventory, orders, and notifications. This project aims to provide a robust, flexible, and maintainable ecommerce solution that can be easily extended and customized to meet the needs of various businesses.
 
 🚀 **Key Features**
 
@@ -14,7 +14,15 @@ This project showcases a microservices architecture with a focus on authenticati
     *   🔄 Stock reservation and release functionality.
     *   📢 Real-time stock updates via Redis Pub/Sub.
     *   🔒 Admin-protected endpoints for inventory management.
-*   **Shared Libraries:**
+*   **Order Microservice:** 
+    * Handles order management, including creating new orders, executing distributed transactions, and publishing events to notify admins and confirm orders with users.
+*   **Notification Microservice:** 
+    * Provides real-time notifications to users, including order updates, inventory changes, and other important events.
+*   **Catalog Microservice:** 
+    * Manages product data, including creating, reading, updating, and deleting products.
+*   **API Gateways:** 
+    * Exposes RESTful APIs for each microservice, allowing for easy integration with web and mobile applications.
+* **Shared Libraries:**
     *   Reusable JWT core library for token management.
 *   **Core Functionality:**
     *   Health check endpoints for monitoring service status.
@@ -24,14 +32,16 @@ This project showcases a microservices architecture with a focus on authenticati
 🛠️ **Tech Stack**
 
 *   **Backend:**
-    *   🐍 Python 3.11+
-    *   ⚡ FastAPI: Web framework for building APIs.
-    *   💾 SQLAlchemy: ORM for database interactions.
-    *   🐳 Redis: In-memory data store for caching and pub/sub.
-    *   🔑 PyJWT: JSON Web Token implementation.
-    *   ⚙️ Pydantic: Data validation and settings management.
-    *   📜 Pydantic Settings: Load settings from `.env` files.
-    *   🔒 Python-jose: JWT signing and encryption.
+    *    Python 3.11+
+    *    FastAPI: Web framework for building APIs.
+    *    SQLAlchemy: ORM for database interactions.
+    *    Redis: In-memory data store for caching and pub/sub.
+    *    PyJWT: JSON Web Token implementation.
+    *   ️ Pydantic: Data validation and settings management.
+    *    Pydantic Settings: Load settings from `.env` files.
+    *    Python-jose: JWT signing and encryption.
+    *    asyncio: For asynchronous programming
+    *    contextlib: For defining async context managers
 *   **Database:**
     *   🐘 PostgreSQL (or any SQLAlchemy-supported database)
 *   **Other:**
@@ -162,42 +172,54 @@ This project showcases a microservices architecture with a focus on authenticati
 | **Service D :80** |	Auth Service	Authorization,gives JWT token, bind Telegram ID.|
 | **Service E :84** |	Notification Service	Centralized sending notification (Telegram Bot).|
 
-```
-├── main.py
+```markdown
+.
 ├── microservices
 │   ├── auth
 │   │   ├── src
+│   │   │   ├── main.py
 │   │   │   ├── api
 │   │   │   │   ├── auth_routes.py
-│   │   │   │   └── internal_routes.py
 │   │   │   ├── core
 │   │   │   │   ├── config.py
-│   │   │   │   ├── database.py
-│   │   │   │   └── redis_client.py
-│   │   │   ├── schemas
-│   │   │   │   └── auth.py
-│   │   │   ├── main.py
-│   │   │   └── tests  # (Optional)
+│   │   ├── tests
+│   │   ├── Dockerfile
 │   ├── inventory
 │   │   ├── src
+│   │   │   ├── main.py
 │   │   │   ├── api
-│   │   │   │   └── routers
-│   │   │   │       ├── admin_routes.py
-│   │   │   │       └── inventory_routes.py
+│   │   │   │   ├── inventory_routes.py
 │   │   │   ├── core
 │   │   │   │   ├── config.py
-│   │   │   │   └── database.py
-│   │   │   ├── models
-│   │   │   │   └── inventory.py
-│   │   │   ├── schemas
-│   │   │   │   └── inventory.py
+│   │   ├── tests
+│   │   ├── Dockerfile
+│   ├── order
+│   │   ├── src
 │   │   │   ├── main.py
-│   │   │   └── tests  # (Optional)
-│   └── notifications # (Hypothetical)
-├── shared-libs
-│   ├── jwt_core_lib
-│   │   ├── dependencies.py
-│   │   └── utils.py
-├── README.md
-└── requirements.txt
+│   │   │   ├── api
+│   │   │   │   ├── order_routers.py
+│   │   │   ├── core
+│   │   │   │   ├── config.py
+│   │   ├── tests
+│   │   ├── Dockerfile
+│   ├── notification
+│   │   ├── src
+│   │   │   ├── main.py
+│   │   │   ├── api
+│   │   │   │   ├── ws.py
+│   │   │   ├── core
+│   │   │   │   ├── config.py
+│   │   ├── tests
+│   │   ├── Dockerfile
+│   ├── catalog
+│   │   ├── src
+│   │   │   ├── main.py
+│   │   │   ├── api
+│   │   │   │   ├── products.py
+│   │   │   ├── core
+│   │   │   │   ├── config.py
+│   │   ├── tests
+│   │   ├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
 ```
